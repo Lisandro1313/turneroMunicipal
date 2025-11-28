@@ -89,21 +89,29 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
+                        <!-- Turnos de Visitantes -->
+                        <a href="{{ url_for('turns.recepcion') }}" class="btn btn-primary">
+                            <i class="bi bi-person-plus-fill"></i> Recepción de Visitantes
+                        </a>
+                        
+                        <hr class="my-2">
+                        
+                        <!-- Gestión de Entregas (módulo previo) -->
                         {% if current_user.role in ['admin', 'editor'] %}
-                        <a href="{{ url_for('main.add_organization') }}" class="btn btn-outline-primary">
+                        <a href="{{ url_for('main.add_organization') }}" class="btn btn-outline-primary btn-sm">
                             <i class="bi bi-plus-circle"></i> Nueva Organización
                         </a>
-                        <a href="{{ url_for('main.generate_schedule') }}" class="btn btn-outline-success">
+                        <a href="{{ url_for('main.generate_schedule') }}" class="btn btn-outline-success btn-sm">
                             <i class="bi bi-calendar-plus"></i> Generar Cronograma
                         </a>
                         {% endif %}
-                        <a href="{{ url_for('main.schedule_list') }}" class="btn btn-outline-info">
+                        <a href="{{ url_for('main.schedule_list') }}" class="btn btn-outline-info btn-sm">
                             <i class="bi bi-list-check"></i> Ver Cronograma
                         </a>
-                        <a href="{{ url_for('main.organizations') }}" class="btn btn-outline-secondary">
+                        <a href="{{ url_for('main.organizations') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="bi bi-building"></i> Ver Organizaciones
                         </a>
-                        <a href="{{ url_for('stats.stats_dashboard') }}" class="btn btn-outline-dark">
+                        <a href="{{ url_for('stats.stats_dashboard') }}" class="btn btn-outline-dark btn-sm">
                             <i class="bi bi-graph-up"></i> Ver Estadísticas
                         </a>
                     </div>

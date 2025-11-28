@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Recepción - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Panel izquierdo: Registrar visitante -->
+        <div class="col-md-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-plus-fill me-2"></i>Registrar Visitante</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formRegistroVisitante">
+                        <!-- DNI con autocompletado -->
+                        <div class="mb-3">
+                            <label for="dni" class="form-label">DNI del Visitante</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                                <input type="text" class="form-control form-control-lg" id="dni" 
+                                       placeholder="Ej: 30111222" maxlength="10">
+                                <button class="btn btn-outline-secondary" type="button" id="btnBuscarDNI">
+                                    <i class="bi bi-search"></i> Buscar
+                                </button>
+                            </div>
+                            <small class="text-muted">Ingrese DNI y presione Buscar para autocompletar</small>
+                        </div>
+
+                        <!-- Nombre (autocompletado por DNI) -->
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre y Apellido <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control form-control-lg" id="nombre" 
+                                       placeholder="Ej: Juan Pérez" required>
+                            </div>
+                            <div id="visitasPrevias" class="mt-1"></div>
+                        </div>
+
+                        <!-- Área/Dirección (dropdown) -->
+                        <div class="mb-3">
+                            <label for="area" class="form-label">¿A qué área va? <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-lg" id="area" required>
+                                <option value="">Seleccione un área...</option>
+                                {% for area in areas %}
+                                <option value="{{ area.key }}" data-piso="{{ area.piso }}">
+                                    {{ area.icon }} {{ area.nombre }} (Piso {{ area.piso }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Motivo de visita (dropdown común + texto libre) -->
+                        <div class="mb-3">
+                            <label for="motivoComun" class="form-label">Motivo de la Visita</label>
+                            <select class="form-select" id="motivoComun">
+                                <option value="">Seleccione motivo común...</option>
+                                <option value="CONSULTA">CONSULTA</option>
+                                <option value="SOLICITUD DE MATERIALES">SOLICITUD DE MATERIALES</option>
+                                <option value="ENTREGA DE DOCUMENTACION">ENTREGA DE DOCUMENTACION</option>
+                                <option value="RECLAMO">RECLAMO</option>
+                                <option value="REUNION">REUNION</option>
+                                <option value="TARJETA ALIMENTARIA">TARJETA ALIMENTARIA</option>
+                                <option value="PLAN MAS VIDA">PLAN MAS VIDA</option>
+                                <option value="INCENDIO">INCENDIO</option>
+                                <option value="COMEDOR">COMEDOR</option>
+                                <option value="OTRO">OTRO (escribir abajo)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="motivoLibreContainer" style="display:none;">
+                            <label for="motivoLibre" class="form-label">Especifique el motivo</label>
+                            <input type="text" class="form-control" id="motivoLibre" 
+                                   placeholder="Escriba el motivo aquí">
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle-fill me-2"></i>Registrar Turno
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Estadísticas rápidas -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">Resumen de Hoy</h6>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="bg-light p-2 rounded text-center">
+                                <div class="h4 mb-0" id="statTotal">0</div>
+                                <small class="text-muted">Total</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-warning bg-opacity-10 p-2 rounded text-center">
+                                <div class="h4 mb-0" id="statEspera">0</div>
+                                <small class="text-muted">En Espera</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-info bg-opacity-10 p-2 rounded text-center">
+                                <div class="h4 mb-0" id="statAutorizado">0</div>
+                                <small class="text-muted">Autorizados</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-success bg-opacity-10 p-2 rounded text-center">
+                                <div class="h4 mb-0" id="statAtendido">0</div>
+                                <small class="text-muted">Atendidos</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho: Cola de espera en tiempo real -->
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="bi bi-hourglass-split me-2"></i>Turnos en Espera
+                        <span class="badge bg-dark ms-2" id="colaCount">0</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="20%">Nombre</th>
+                                    <th width="12%">DNI</th>
+                                    <th width="30%">Área</th>
+                                    <th width="18%">Motivo</th>
+                                    <th width="10%">Estado</th>
+                                    <th width="5%">Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaCola">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        No hay turnos en espera
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-control-lg, .form-select-lg {
+    font-size: 1.1rem;
+    padding: 0.75rem;
+}
+</style>
+
+<script>
+// Polling cada 10 segundos para actualizar cola
+let pollingInterval;
+
+// Mostrar/ocultar motivo libre
+document.getElementById('motivoComun').addEventListener('change', function() {
+    const container = document.getElementById('motivoLibreContainer');
+    container.style.display = this.value === 'OTRO' ? 'block' : 'none';
+});
+
+// Buscar visitante por DNI
+document.getElementById('btnBuscarDNI').addEventListener('click', async function() {
+    const dni = document.getElementById('dni').value.trim();
+    if (!dni) {
+        alert('Ingrese un DNI para buscar');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/turns/api/dni/${dni}/historial`);
+        const data = await res.json();
+        
+        if (data.success && data.data) {
+            document.getElementById('nombre').value = data.data.nombre;
+            document.getElementById('visitasPrevias').innerHTML = 
+                `<small class="text-success"><i class="bi bi-check-circle"></i> ${data.data.visitas_previas} visita(s) previa(s)</small>`;
+        } else {
+            document.getElementById('visitasPrevias').innerHTML = 
+                `<small class="text-info"><i class="bi bi-info-circle"></i> Primera visita</small>`;
+        }
+    } catch (err) {
+        console.error('Error buscando DNI:', err);
+    }
+});
+
+// Registrar turno
+document.getElementById('formRegistroVisitante').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const nombre = document.getElementById('nombre').value.trim();
+    const dni = document.getElementById('dni').value.trim();
+    const areaKey = document.getElementById('area').value;
+    const motivoComun = document.getElementById('motivoComun').value;
+    const motivoLibre = document.getElementById('motivoLibre').value.trim();
+    
+    if (!nombre || !areaKey) {
+        alert('Complete los campos obligatorios (nombre y área)');
+        return;
+    }
+    
+    const motivoFinal = motivoComun === 'OTRO' ? motivoLibre : motivoComun;
+    
+    try {
+        const res = await fetch('/turns/api/turnos', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                nombre: nombre,
+                dni: dni || null,
+                area_key: areaKey,
+                motivo_texto: motivoFinal
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            // Limpiar formulario
+            document.getElementById('formRegistroVisitante').reset();
+            document.getElementById('visitasPrevias').innerHTML = '';
+            document.getElementById('motivoLibreContainer').style.display = 'none';
+            
+            // Actualizar cola inmediatamente
+            cargarCola();
+            cargarEstadisticas();
+            
+            // Feedback visual
+            alert(`✓ Turno registrado para ${nombre}`);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (err) {
+        console.error('Error registrando turno:', err);
+        alert('Error al registrar el turno');
+    }
+});
+
+// Cargar cola de espera
+async function cargarCola() {
+    try {
+        const res = await fetch('/turns/api/turnos/en-espera');
+        const data = await res.json();
+        
+        const tbody = document.getElementById('tablaCola');
+        document.getElementById('colaCount').textContent = data.count;
+        
+        if (data.count === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        No hay turnos en espera
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = data.data.map((t, i) => {
+            const estadoBadge = t.estado === 'ESPERA' 
+                ? '<span class="badge bg-warning">Esperando</span>'
+                : '<span class="badge bg-info">Autorizado</span>';
+            
+            const hora = new Date(t.hora_llegada).toLocaleTimeString('es-AR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            return `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><strong>${t.nombre}</strong></td>
+                    <td><small>${t.dni || '-'}</small></td>
+                    <td><small>${t.area_nombre}</small></td>
+                    <td><small>${t.motivo_texto || '-'}</small></td>
+                    <td>${estadoBadge}</td>
+                    <td><small>${hora}</small></td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Error cargando cola:', err);
+    }
+}
+
+// Cargar estadísticas
+async function cargarEstadisticas() {
+    try {
+        const res = await fetch('/turns/api/estadisticas/resumen');
+        const data = await res.json();
+        
+        if (data.success) {
+            document.getElementById('statTotal').textContent = data.data.total_hoy;
+            document.getElementById('statEspera').textContent = data.data.en_espera;
+            document.getElementById('statAutorizado').textContent = data.data.autorizados;
+            document.getElementById('statAtendido').textContent = data.data.atendidos_hoy;
+        }
+    } catch (err) {
+        console.error('Error cargando estadísticas:', err);
+    }
+}
+
+// Iniciar polling
+function iniciarPolling() {
+    cargarCola();
+    cargarEstadisticas();
+    
+    pollingInterval = setInterval(() => {
+        cargarCola();
+        cargarEstadisticas();
+    }, 10000); // Cada 10 segundos
+}
+
+// Detener polling al salir
+window.addEventListener('beforeunload', () => {
+    if (pollingInterval) clearInterval(pollingInterval);
+});
+
+// Iniciar al cargar
+document.addEventListener('DOMContentLoaded', iniciarPolling);
+</script>
+{% endblock %}

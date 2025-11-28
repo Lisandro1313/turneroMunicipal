@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}{{ area.nombre }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header del área -->
+    <div class="row mb-3">
+        <div class="col">
+            <div class="card bg-primary text-white shadow-sm">
+                <div class="card-body">
+                    <h3 class="mb-0">
+                        <span class="fs-1 me-2">{{ area.icon }}</span>
+                        {{ area.nombre }}
+                        <span class="badge bg-light text-dark ms-2">Piso {{ area.piso }}</span>
+                    </h3>
+                    <p class="mb-0 mt-2">Panel de gestión de turnos</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Turnos pendientes -->
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Turnos Pendientes
+                        <span class="badge bg-dark ms-2" id="pendientesCount">0</span>
+                    </h5>
+                    <button class="btn btn-sm btn-light" onclick="cargarTurnos()">
+                        <i class="bi bi-arrow-clockwise"></i> Actualizar
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="25%">Visitante</th>
+                                    <th width="15%">DNI</th>
+                                    <th width="25%">Motivo</th>
+                                    <th width="10%">Estado</th>
+                                    <th width="10%">Llegada</th>
+                                    <th width="10%">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaPendientes">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        No hay turnos pendientes
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas y acciones rápidas -->
+        <div class="col-md-4">
+            <!-- Stats -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Estadísticas del Área</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <div class="h3 mb-0 text-warning" id="statPendientes">0</div>
+                                <small class="text-muted">Pendientes</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light p-3 rounded text-center">
+                                <div class="h3 mb-0 text-success" id="statAtendidosHoy">0</div>
+                                <small class="text-muted">Atendidos Hoy</small>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="bg-light p-3 rounded text-center">
+                                <div class="h3 mb-0 text-primary" id="statTotalHoy">0</div>
+                                <small class="text-muted">Total de Hoy</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones rápidas -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="bi bi-lightning-fill me-2"></i>Acciones Rápidas</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/turns/recepcion" class="btn btn-outline-primary">
+                            <i class="bi bi-eye me-2"></i>Ver Recepción
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="verHistorial()">
+                            <i class="bi bi-clock-history me-2"></i>Historial
+                        </button>
+                        <button class="btn btn-outline-info" onclick="exportarDia()">
+                            <i class="bi bi-download me-2"></i>Exportar Día
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Atendidos recientemente -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-check-circle me-2"></i>Atendidos Recientemente</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Visitante</th>
+                                    <th>Motivo</th>
+                                    <th>Atendido Por</th>
+                                    <th>Hora</th>
+                                    <th>Tiempo Espera</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaAtendidos">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        Sin registros recientes
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Autorizar -->
+<div class="modal fade" id="modalAutorizar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Autorizar Subida</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Confirma que desea autorizar al visitante <strong id="nombreAutorizar"></strong> a subir?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" onclick="confirmarAutorizar()">
+                    <i class="bi bi-arrow-up-circle me-2"></i>Autorizar Subida
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Atender -->
+<div class="modal fade" id="modalAtender" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Marcar como Atendido</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Visitante: <strong id="nombreAtender"></strong></p>
+                <div class="mb-3">
+                    <label class="form-label">Atendido por:</label>
+                    <input type="text" class="form-control" id="atendidoPor" 
+                           value="{{ current_user.username }}" placeholder="Nombre del agente">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="confirmarAtender()">
+                    <i class="bi bi-check-circle me-2"></i>Marcar Atendido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const AREA_KEY = '{{ area.key }}';
+let turnoActual = null;
+let pollingInterval;
+
+// Cargar turnos del área
+async function cargarTurnos() {
+    try {
+        const res = await fetch(`/turns/api/turnos/en-espera?area_key=${AREA_KEY}`);
+        const data = await res.json();
+        
+        const tbody = document.getElementById('tablaPendientes');
+        document.getElementById('pendientesCount').textContent = data.count;
+        document.getElementById('statPendientes').textContent = data.count;
+        
+        if (data.count === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        No hay turnos pendientes
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = data.data.map((t, i) => {
+            const estadoBadge = t.estado === 'ESPERA' 
+                ? '<span class="badge bg-warning">Esperando</span>'
+                : '<span class="badge bg-info">Autorizado</span>';
+            
+            const hora = new Date(t.hora_llegada).toLocaleTimeString('es-AR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const acciones = t.estado === 'ESPERA'
+                ? `<button class="btn btn-sm btn-info" onclick="autorizarTurno(${t.id}, '${t.nombre}')">
+                     <i class="bi bi-arrow-up"></i>
+                   </button>`
+                : `<button class="btn btn-sm btn-success" onclick="atenderTurno(${t.id}, '${t.nombre}')">
+                     <i class="bi bi-check"></i>
+                   </button>`;
+            
+            return `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><strong>${t.nombre}</strong></td>
+                    <td><small>${t.dni || '-'}</small></td>
+                    <td><small>${t.motivo_texto || '-'}</small></td>
+                    <td>${estadoBadge}</td>
+                    <td><small>${hora}</small></td>
+                    <td>${acciones}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Error cargando turnos:', err);
+    }
+}
+
+// Cargar atendidos
+async function cargarAtendidos() {
+    try {
+        const res = await fetch(`/turns/api/turnos?area_key=${AREA_KEY}&estado=ATENDIDO&limit=10`);
+        const data = await res.json();
+        
+        const tbody = document.getElementById('tablaAtendidos');
+        
+        if (data.count === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-3">
+                        Sin registros recientes
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = data.data.map(t => {
+            const horaAtendido = new Date(t.hora_atendido).toLocaleTimeString('es-AR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const tiempoEspera = t.tiempo_espera_segundos 
+                ? Math.floor(t.tiempo_espera_segundos / 60) + ' min'
+                : '-';
+            
+            return `
+                <tr>
+                    <td>${t.nombre}</td>
+                    <td><small>${t.motivo_texto || '-'}</small></td>
+                    <td><small>${t.atendido_por || '-'}</small></td>
+                    <td><small>${horaAtendido}</small></td>
+                    <td><small>${tiempoEspera}</small></td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Error cargando atendidos:', err);
+    }
+}
+
+// Cargar estadísticas del área
+async function cargarEstadisticas() {
+    try {
+        const res = await fetch('/turns/api/estadisticas/resumen');
+        const data = await res.json();
+        
+        if (data.success) {
+            document.getElementById('statTotalHoy').textContent = data.data.total_hoy;
+            document.getElementById('statAtendidosHoy').textContent = data.data.atendidos_hoy;
+        }
+    } catch (err) {
+        console.error('Error cargando estadísticas:', err);
+    }
+}
+
+// Autorizar turno
+function autorizarTurno(id, nombre) {
+    turnoActual = id;
+    document.getElementById('nombreAutorizar').textContent = nombre;
+    new bootstrap.Modal(document.getElementById('modalAutorizar')).show();
+}
+
+async function confirmarAutorizar() {
+    try {
+        const res = await fetch(`/turns/api/turnos/${turnoActual}/autorizar`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalAutorizar')).hide();
+            cargarTurnos();
+            alert('✓ Visitante autorizado a subir');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (err) {
+        console.error('Error autorizando:', err);
+        alert('Error al autorizar');
+    }
+}
+
+// Atender turno
+function atenderTurno(id, nombre) {
+    turnoActual = id;
+    document.getElementById('nombreAtender').textContent = nombre;
+    new bootstrap.Modal(document.getElementById('modalAtender')).show();
+}
+
+async function confirmarAtender() {
+    const atendidoPor = document.getElementById('atendidoPor').value.trim();
+    
+    try {
+        const res = await fetch(`/turns/api/turnos/${turnoActual}/atender`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ atendido_por: atendidoPor })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalAtender')).hide();
+            cargarTurnos();
+            cargarAtendidos();
+            cargarEstadisticas();
+            alert('✓ Turno marcado como atendido');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (err) {
+        console.error('Error atendiendo:', err);
+        alert('Error al marcar como atendido');
+    }
+}
+
+// Funciones placeholder
+function verHistorial() {
+    alert('Funcionalidad en desarrollo');
+}
+
+function exportarDia() {
+    alert('Funcionalidad en desarrollo');
+}
+
+// Polling
+function iniciarPolling() {
+    cargarTurnos();
+    cargarAtendidos();
+    cargarEstadisticas();
+    
+    pollingInterval = setInterval(() => {
+        cargarTurnos();
+        cargarAtendidos();
+        cargarEstadisticas();
+    }, 10000); // Cada 10 segundos
+}
+
+window.addEventListener('beforeunload', () => {
+    if (pollingInterval) clearInterval(pollingInterval);
+});
+
+document.addEventListener('DOMContentLoaded', iniciarPolling);
+</script>
+{% endblock %}
