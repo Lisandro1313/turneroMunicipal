@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Organizaciones</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Representante</th>
+            <th>Dirección</th>
+            <th>Teléfono</th>
+            <th>Kilos</th>
+            <th>Frecuencia</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for org in organizations %}
+        <tr>
+            <td>{{ org.name }}</td>
+            <td>{{ org.representative }}</td>
+            <td>{{ org.address }}</td>
+            <td>{{ org.phone }}</td>
+            <td>{{ org.kilos }}</td>
+            <td>{{ org.frequency }}</td>
+            <td>
+                <a href="/edit_organization/{{ org.id }}">Editar</a>
+                <a href="/delete_organization/{{ org.id }}">Eliminar</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="/add_organization">Agregar nueva organización</a>
+{% endblock %}

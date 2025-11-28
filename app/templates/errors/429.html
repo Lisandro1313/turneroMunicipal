@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Demasiadas solicitudes - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center py-5">
+            <i class="bi bi-hourglass-split display-1 text-info"></i>
+            <h1 class="mt-4 display-4">429</h1>
+            <h2 class="mb-4">Demasiadas solicitudes</h2>
+            <p class="lead text-muted">Has enviado demasiadas solicitudes en poco tiempo. Por favor, espera un momento e intenta nuevamente.</p>
+            <div class="mt-4">
+                <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                    <i class="bi bi-house"></i> Ir al Inicio
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+<form method="POST" action="{{ url_for('main.generate_schedule') }}">
+    <label>Fecha de inicio:</label>
+    <input type="date" name="start_date" value="2024-02-01">
+    <label>Fecha de fin:</label>
+    <input type="date" name="end_date" value="2024-04-30">
+    <label>Máximo por día:</label>
+    <input type="number" name="max_per_day" min="1" value="3">
+    <button type="submit">Generar Cronograma</button>
+</form>

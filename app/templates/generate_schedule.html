@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Generar Cronograma - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-calendar-plus"></i> Generar Cronograma de Entregas
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Información:</strong> Este proceso generará automáticamente las entregas programadas para todas las organizaciones activas según su frecuencia configurada.
+                    </div>
+
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="start_date" class="form-label">Fecha de Inicio *</label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="start_date" 
+                                       name="start_date" 
+                                       value="{{ request.form.get('start_date', '2025-01-01') }}"
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="end_date" class="form-label">Fecha de Fin *</label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="end_date" 
+                                       name="end_date" 
+                                       value="{{ request.form.get('end_date', '2025-12-31') }}"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="clear_existing" 
+                                   name="clear_existing">
+                            <label class="form-check-label" for="clear_existing">
+                                <i class="bi bi-trash text-danger"></i> Eliminar cronograma existente antes de generar
+                            </label>
+                            <small class="form-text text-muted d-block">
+                                Si está marcado, se eliminarán todas las entregas programadas antes de generar el nuevo cronograma.
+                            </small>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Advertencia:</strong> Asegúrate de que todas las organizaciones tengan configurada su frecuencia de entrega y día correspondiente antes de generar el cronograma.
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="generateBtn">
+                                <i class="bi bi-calendar-plus"></i> Generar Cronograma
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Preview Info -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información del Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <i class="bi bi-building fs-1 text-primary"></i>
+                            <p class="mt-2 mb-0"><strong id="totalOrgs">-</strong></p>
+                            <small class="text-muted">Organizaciones Activas</small>
+                        </div>
+                        <div class="col-md-4">
+                            <i class="bi bi-calendar3 fs-1 text-success"></i>
+                            <p class="mt-2 mb-0"><strong id="existingSchedules">-</strong></p>
+                            <small class="text-muted">Entregas Programadas</small>
+                        </div>
+                        <div class="col-md-4">
+                            <i class="bi bi-check-circle fs-1 text-info"></i>
+                            <p class="mt-2 mb-0"><strong id="deliveredCount">-</strong></p>
+                            <small class="text-muted">Entregas Completadas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load current stats
+async function loadStats() {
+    try {
+        const response = await fetch('/stats/api/overview');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('totalOrgs').textContent = data.data.organizations.total;
+            document.getElementById('existingSchedules').textContent = data.data.schedules.total;
+            document.getElementById('deliveredCount').textContent = data.data.schedules.delivered;
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const startDate = new Date(document.getElementById('start_date').value);
+    const endDate = new Date(document.getElementById('end_date').value);
+    
+    if (startDate > endDate) {
+        e.preventDefault();
+        alert('La fecha de inicio debe ser anterior a la fecha de fin');
+        return false;
+    }
+    
+    const clearExisting = document.getElementById('clear_existing').checked;
+    if (clearExisting) {
+        if (!confirm('¿Está seguro de eliminar el cronograma existente? Esta acción no se puede deshacer.')) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    
+    // Show loading state
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generando...';
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', loadStats);
+</script>
+{% endblock %}
