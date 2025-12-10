@@ -46,6 +46,8 @@ def create_app(config_name=None):
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
+    
+    # CSRF Protection
     csrf.init_app(app)
     
     # Rate limiting
@@ -70,14 +72,13 @@ def create_app(config_name=None):
     
     # Registrar blueprints
     from app.routes import main
-    from app.api import api_bp
-    from app.stats import stats_bp
     from app.turns import turns_bp
     
     app.register_blueprint(main)
-    app.register_blueprint(api_bp, url_prefix='/api')
-    app.register_blueprint(stats_bp, url_prefix='/stats')
     app.register_blueprint(turns_bp)
+    
+    # Excluir rutas API del CSRF
+    csrf.exempt(turns_bp)
     
     # Context processors
     @app.context_processor
@@ -85,10 +86,7 @@ def create_app(config_name=None):
         """Inyectar configuración en los templates"""
         return {
             'app_name': app.config.get('APP_NAME', 'Turnero Municipal'),
-            'direcciones': app.config.get('DIRECCIONES_MUNICIPALES', []),
-            'areas': app.config.get('AREAS_MUNICIPALES_NORMALIZADAS', []),
-            'frecuencias': app.config.get('FRECUENCIAS_ENTREGA', []),
-            'dias_semana': app.config.get('DIAS_SEMANA', [])
+            'areas': app.config.get('AREAS_MUNICIPALES_NORMALIZADAS', [])
         }
     
     # Error handlers
@@ -110,7 +108,7 @@ def create_app(config_name=None):
     
     # Crear tablas
     with app.app_context():
-        from app.models import User, Organization, Schedule, AuditLog, VisitorTurn
+        from app.models import User, VisitorTurn, ChatMessage
         db.create_all()
         
         # Crear usuario admin por defecto si no existe

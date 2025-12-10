@@ -2,8 +2,37 @@
 
 {% block title %}Recepción - {{ super() }}{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Botón de control de sonido */
+#btnToggleSound {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    z-index: 1000;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
+    <!-- Botón flotante de chat -->
+    <button class="btn btn-primary btn-lg position-fixed bottom-0 end-0 m-4 rounded-circle" 
+            style="width: 60px; height: 60px; z-index: 1000;" 
+            data-bs-toggle="modal" data-bs-target="#chatModal">
+        <i class="bi bi-chat-dots fs-4"></i>
+        <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" 
+              id="chatBadge" style="display:none;">0</span>
+    </button>
+
+    <!-- Botón control de sonido -->
+    <button class="btn btn-success btn-lg" id="btnToggleSound" title="Sonido activado">
+        <i class="bi bi-volume-up-fill fs-5"></i>
+    </button>
+
     <div class="row">
         <!-- Panel izquierdo: Registrar visitante -->
         <div class="col-md-5">
@@ -157,6 +186,30 @@
     </div>
 </div>
 
+<!-- Modal de Chat -->
+<div class="modal fade" id="chatModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-chat-dots me-2"></i>Chat Interno</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="height: 400px; overflow-y: auto;" id="chatMensajes">
+                <p class="text-center text-muted">Cargando mensajes...</p>
+            </div>
+            <div class="modal-footer">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="inputNombreChat" placeholder="Tu nombre..." style="max-width: 150px;">
+                    <input type="text" class="form-control" id="inputMensaje" placeholder="Escribe un mensaje...">
+                    <button class="btn btn-primary" type="button" id="btnEnviarMensaje">
+                        <i class="bi bi-send-fill"></i> Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .form-control-lg, .form-select-lg {
     font-size: 1.1rem;
@@ -164,9 +217,13 @@
 }
 </style>
 
+<!-- Scripts de notificación -->
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+
 <script>
 // Polling cada 10 segundos para actualizar cola
 let pollingInterval;
+let lastTurnCount = 0;
 
 // Mostrar/ocultar motivo libre
 document.getElementById('motivoComun').addEventListener('change', function() {
@@ -228,6 +285,18 @@ document.getElementById('formRegistroVisitante').addEventListener('submit', asyn
             })
         });
         
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('Error response:', errorText);
+            try {
+                const errorData = JSON.parse(errorText);
+                alert('Error: ' + (errorData.message || 'Error desconocido'));
+            } catch {
+                alert('Error del servidor: ' + res.status);
+            }
+            return;
+        }
+        
         const data = await res.json();
         
         if (data.success) {
@@ -247,7 +316,7 @@ document.getElementById('formRegistroVisitante').addEventListener('submit', asyn
         }
     } catch (err) {
         console.error('Error registrando turno:', err);
-        alert('Error al registrar el turno');
+        alert('Error al registrar el turno: ' + err.message);
     }
 });
 
@@ -259,6 +328,21 @@ async function cargarCola() {
         
         const tbody = document.getElementById('tablaCola');
         document.getElementById('colaCount').textContent = data.count;
+        
+        // Detectar nuevos turnos y notificar
+        if (lastTurnCount > 0 && data.count > lastTurnCount) {
+            const nuevosTurnos = data.count - lastTurnCount;
+            console.log(`${nuevosTurnos} nuevo(s) turno(s) detectado(s)`);
+            
+            // Notificar el último turno agregado
+            if (data.data.length > 0) {
+                const ultimoTurno = data.data[data.data.length - 1];
+                if (window.turnoNotifier) {
+                    window.turnoNotifier.notifyNewTurn(ultimoTurno);
+                }
+            }
+        }
+        lastTurnCount = data.count;
         
         if (data.count === 0) {
             tbody.innerHTML = `
@@ -275,7 +359,7 @@ async function cargarCola() {
         tbody.innerHTML = data.data.map((t, i) => {
             const estadoBadge = t.estado === 'ESPERA' 
                 ? '<span class="badge bg-warning">Esperando</span>'
-                : '<span class="badge bg-info">Autorizado</span>';
+                : `<span class="badge bg-info">Autorizado - ${t.llamado_por || 'N/A'}</span>`;
             
             const hora = new Date(t.hora_llegada).toLocaleTimeString('es-AR', {
                 hour: '2-digit',
@@ -283,7 +367,7 @@ async function cargarCola() {
             });
             
             return `
-                <tr>
+                <tr class="${t.estado === 'AUTORIZADO_SUBIR' ? 'table-info' : ''}">
                     <td>${i + 1}</td>
                     <td><strong>${t.nombre}</strong></td>
                     <td><small>${t.dni || '-'}</small></td>
@@ -332,7 +416,124 @@ window.addEventListener('beforeunload', () => {
     if (pollingInterval) clearInterval(pollingInterval);
 });
 
+// ============================================
+// CHAT
+// ============================================
+function cargarMensajes() {
+    fetch('/turns/api/chat/mensajes?limite=50')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('Error cargando mensajes');
+                return;
+            }
+            
+            const container = document.getElementById('chatMensajes');
+            if (!data.mensajes || data.mensajes.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">No hay mensajes aún</p>';
+                return;
+            }
+            
+            container.innerHTML = data.mensajes.map(m => {
+                const esMio = m.usuario === '{{ current_user.username }}';
+                const origenLabel = m.origen === 'recepcion' ? 'Recepción' : `Piso ${m.origen.replace('piso_', '')}`;
+                const fechaHora = new Date(m.timestamp).toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                return `
+                    <div class="mb-2 ${esMio ? 'text-end' : ''}">
+                        <div class="d-inline-block ${esMio ? 'bg-primary text-white' : 'bg-light border'} p-2 rounded shadow-sm" style="max-width: 70%;">
+                            <small class="d-block ${esMio ? 'text-white-50' : 'text-muted'}">
+                                <strong>${m.usuario}</strong> (${origenLabel}) - ${fechaHora}
+                            </small>
+                            <p class="mb-0">${m.mensaje}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.scrollTop = container.scrollHeight;
+        })
+        .catch(err => {
+            console.error('Error cargando mensajes:', err);
+        });
+}
+
 // Iniciar al cargar
-document.addEventListener('DOMContentLoaded', iniciarPolling);
+document.addEventListener('DOMContentLoaded', function() {
+    iniciarPolling();
+    
+    // Control de sonido
+    const btnSound = document.getElementById('btnToggleSound');
+    if (btnSound) {
+        btnSound.addEventListener('click', function() {
+            if (window.turnoNotifier) {
+                const enabled = window.turnoNotifier.toggleSound();
+                this.innerHTML = enabled 
+                    ? '<i class="bi bi-volume-up-fill fs-5"></i>'
+                    : '<i class="bi bi-volume-mute-fill fs-5"></i>';
+                this.className = enabled ? 'btn btn-success btn-lg' : 'btn btn-secondary btn-lg';
+                this.title = enabled ? 'Sonido activado' : 'Sonido desactivado';
+            }
+        });
+    }
+    
+    // Configurar eventos de chat
+    const btnEnviar = document.getElementById('btnEnviarMensaje');
+    const inputMensaje = document.getElementById('inputMensaje');
+    const inputNombre = document.getElementById('inputNombreChat');
+    const chatModal = document.getElementById('chatModal');
+    
+    if (btnEnviar) {
+        btnEnviar.addEventListener('click', function() {
+            const mensaje = inputMensaje.value.trim();
+            const nombre = inputNombre.value.trim() || 'Anónimo';
+            
+            if (!mensaje) return;
+            
+            fetch('/turns/api/chat/enviar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    usuario: nombre,
+                    mensaje: mensaje,
+                    origen: 'recepcion'
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    inputMensaje.value = '';
+                    cargarMensajes();
+                } else {
+                    alert('Error enviando mensaje: ' + (data.message || 'Error desconocido'));
+                }
+            })
+            .catch(err => {
+                console.error('Error enviando mensaje:', err);
+                alert('Error de conexión al enviar mensaje');
+            });
+        });
+    }
+    
+    if (inputMensaje) {
+        inputMensaje.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                btnEnviar.click();
+            }
+        });
+    }
+    
+    if (chatModal) {
+        chatModal.addEventListener('shown.bs.modal', cargarMensajes);
+    }
+    
+    // Polling de chat cada 5 segundos
+    setInterval(cargarMensajes, 5000);
+});
 </script>
 {% endblock %}

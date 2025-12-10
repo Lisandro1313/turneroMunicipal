@@ -1,33 +1,46 @@
-# Turnero Municipal - Sistema de Gestión de Entregas Alimentarias
+# Sistema de Turnos Municipal - Gestión de Visitantes
 
-## 🚀 Características Mejoradas
+## 🎯 Descripción
 
-### ✅ Seguridad
-- ✔ Autenticación mejorada con hash de contraseñas (Werkzeug)
-- ✔ Protección CSRF integrada
-- ✔ Rate limiting para prevenir ataques
-- ✔ Variables de entorno para secrets
-- ✔ Roles de usuario (admin, editor, viewer)
-- ✔ Logging de auditoría
+Sistema de gestión de turnos para visitantes en edificio municipal de 3 pisos. Permite a recepción registrar visitantes, a los pisos llamarlos cuando estén listos para atenderlos, y a administradores ver estadísticas completas.
 
-### ✅ Interfaz Moderna
-- ✔ Bootstrap 5 responsive design
-- ✔ Interacciones con mouse (dropdowns, selects)
-- ✔ Sin inputs innecesarios - todo es más visual
-- ✔ Iconos con Bootstrap Icons
-- ✔ Diseño limpio y profesional
+## ✨ Características Principales
 
-### ✅ Datos Centralizados
-- ✔ Configuración centralizada en `config.py`
-- ✔ Direcciones municipales estandarizadas
-- ✔ Sistema de clasificación para organizaciones
-- ✔ Estadísticas completas con API REST
+### 🔐 Sistema de Roles
+- **Admin**: Acceso completo + vista de estadísticas
+- **Recepción**: Registro de visitantes y gestión de cola
+- **Pisos (1, 2, 3)**: Llamado y atención de visitantes
 
-### ✅ Funcionalidades
-- ✔ Dashboard con métricas en tiempo real
-- ✔ CRUD completo de organizaciones
-- ✔ Generación automática de cronogramas
-- ✔ Estadísticas por mes, organización y dirección
+### 📋 Gestión de Turnos
+- ✅ Registro rápido de visitantes (DNI, nombre, área, motivo)
+- ✅ Autocompletado desde historial al buscar por DNI
+- ✅ Cola de espera en tiempo real
+- ✅ Llamado de visitantes con seguimiento de quién llama
+- ✅ Registro de quién atiende al visitante
+- ✅ Estados: Espera → Autorizado/Subiendo → Atendido
+
+### 💬 Chat Interno
+- ✅ Mensajes entre recepción y pisos
+- ✅ Notificaciones en tiempo real
+- ✅ Formato con fecha/hora completa (DD/MM/YYYY HH:MM)
+
+### 📊 Estadísticas (Admin)
+- ✅ Resumen diario: Total, En Espera, Subiendo, Atendidos
+- ✅ Distribución por piso (1, 2, 3)
+- ✅ Top 10 áreas más visitadas
+- ✅ Últimos 20 turnos con detalles completos
+- ✅ Auto-actualización cada 30 segundos
+
+### 🔔 Notificaciones
+- ✅ Sonido al registrar nuevo turno
+- ✅ Alertas visuales (toast messages)
+- ✅ Notificaciones del navegador
+- ✅ Control de activación/desactivación de sonido
+
+### 🌍 Configuración Regional
+- ✅ Timezone: Argentina (UTC-3)
+- ✅ Formato de fechas: DD/MM/YYYY HH:MM
+- ✅ Idioma: Español
 - ✔ Filtros y búsqueda avanzada
 - ✔ Paginación
 - ✔ Log de auditoría

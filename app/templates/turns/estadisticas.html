@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Estadísticas - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-graph-up"></i> Panel de Estadísticas</h2>
+            <p class="text-muted">Vista general del sistema de turnos</p>
+        </div>
+    </div>
+
+    <!-- Resumen General -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-people-fill display-4 text-primary"></i>
+                    <h3 class="mt-2" id="statTotalHoy">0</h3>
+                    <p class="text-muted mb-0">Total Hoy</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-hourglass-split display-4 text-warning"></i>
+                    <h3 class="mt-2" id="statEspera">0</h3>
+                    <p class="text-muted mb-0">En Espera</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-arrow-up-circle-fill display-4 text-info"></i>
+                    <h3 class="mt-2" id="statAutorizados">0</h3>
+                    <p class="text-muted mb-0">Subiendo</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success shadow-sm">
+                <div class="card-body text-center">
+                    <i class="bi bi-check-circle-fill display-4 text-success"></i>
+                    <h3 class="mt-2" id="statAtendidos">0</h3>
+                    <p class="text-muted mb-0">Atendidos</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas por Piso -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-building"></i> Turnos por Piso</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="statsPorPiso">
+                        <div class="col-md-4 text-center">
+                            <h2 id="statPiso1">0</h2>
+                            <p class="text-muted">Piso 1</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <h2 id="statPiso2">0</h2>
+                            <p class="text-muted">Piso 2</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <h2 id="statPiso3">0</h2>
+                            <p class="text-muted">Piso 3</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas por Área -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Top 10 Áreas más Visitadas Hoy</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Área</th>
+                                    <th>Piso</th>
+                                    <th>Cantidad</th>
+                                    <th>Atendidos</th>
+                                    <th>En espera</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaPorArea">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimos Turnos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Últimos 20 Turnos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Nombre</th>
+                                    <th>DNI</th>
+                                    <th>Área</th>
+                                    <th>Piso</th>
+                                    <th>Motivo</th>
+                                    <th>Estado</th>
+                                    <th>Atendido por</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaUltimosTurnos">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cargarEstadisticas() {
+    // Resumen general
+    fetch('/turns/api/estadisticas/resumen')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('statTotalHoy').textContent = data.data.total_hoy;
+                document.getElementById('statEspera').textContent = data.data.en_espera;
+                document.getElementById('statAutorizados').textContent = data.data.autorizados;
+                document.getElementById('statAtendidos').textContent = data.data.atendidos_hoy;
+            }
+        });
+    
+    // Por piso
+    fetch('/turns/api/estadisticas/por-piso')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('statPiso1').textContent = data.data['1'] || 0;
+                document.getElementById('statPiso2').textContent = data.data['2'] || 0;
+                document.getElementById('statPiso3').textContent = data.data['3'] || 0;
+            }
+        });
+    
+    // Por área
+    fetch('/turns/api/estadisticas/por-area')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data.length > 0) {
+                const tbody = document.getElementById('tablaPorArea');
+                tbody.innerHTML = data.data.slice(0, 10).map((area, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><strong>${area.area_nombre}</strong></td>
+                        <td>Piso ${area.piso}</td>
+                        <td><span class="badge bg-primary">${area.total}</span></td>
+                        <td><span class="badge bg-success">${area.atendidos}</span></td>
+                        <td><span class="badge bg-warning text-dark">${area.en_espera}</span></td>
+                    </tr>
+                `).join('');
+            }
+        });
+    
+    // Últimos turnos
+    fetch('/turns/api/turnos?limit=20')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data.length > 0) {
+                const tbody = document.getElementById('tablaUltimosTurnos');
+                tbody.innerHTML = data.data.map(t => {
+                    const estadoBadge = {
+                        'ESPERA': '<span class="badge bg-warning text-dark">Esperando</span>',
+                        'AUTORIZADO_SUBIR': '<span class="badge bg-info">Subiendo</span>',
+                        'ATENDIDO': '<span class="badge bg-success">Atendido</span>',
+                        'RECHAZADO': '<span class="badge bg-danger">Rechazado</span>'
+                    };
+                    const hora = new Date(t.hora_llegada).toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'});
+                    return `
+                        <tr>
+                            <td>${hora}</td>
+                            <td><strong>${t.nombre}</strong></td>
+                            <td>${t.dni || '-'}</td>
+                            <td>${t.area_nombre}</td>
+                            <td>Piso ${t.piso}</td>
+                            <td>${t.motivo_texto || '-'}</td>
+                            <td>${estadoBadge[t.estado]}</td>
+                            <td>${t.atendido_por || '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                document.getElementById('tablaUltimosTurnos').innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay turnos registrados</td></tr>';
+            }
+        });
+}
+
+// Cargar al inicio
+cargarEstadisticas();
+
+// Auto-refresh cada 30 segundos
+setInterval(cargarEstadisticas, 30000);
+</script>
+{% endblock %}
