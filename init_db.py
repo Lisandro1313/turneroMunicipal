@@ -20,19 +20,36 @@ def init_database():
                 'username': 'admin',
                 'email': 'admin@municipio.gob.ar',
                 'role': 'admin',
+                'piso': None,
                 'password': 'admin123'
             },
             {
                 'username': 'recepcion',
                 'email': 'recepcion@municipio.gob.ar',
                 'role': 'recepcion',
+                'piso': None,
                 'password': 'recepcion123'
             },
             {
-                'username': 'pisos',
-                'email': 'pisos@municipio.gob.ar',
-                'role': 'pisos',
-                'password': 'pisos123'
+                'username': 'piso1',
+                'email': 'piso1@municipio.gob.ar',
+                'role': 'piso1',
+                'piso': '1',
+                'password': 'piso1123'
+            },
+            {
+                'username': 'piso2',
+                'email': 'piso2@municipio.gob.ar',
+                'role': 'piso2',
+                'piso': '2',
+                'password': 'piso2123'
+            },
+            {
+                'username': 'piso3',
+                'email': 'piso3@municipio.gob.ar',
+                'role': 'piso3',
+                'piso': '3',
+                'password': 'piso3123'
             }
         ]
         
@@ -42,7 +59,8 @@ def init_database():
                 user = User(
                     username=user_data['username'],
                     email=user_data['email'],
-                    role=user_data['role']
+                    role=user_data['role'],
+                    piso=user_data.get('piso')
                 )
                 user.set_password(user_data['password'])
                 db.session.add(user)

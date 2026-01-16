@@ -18,7 +18,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False, index=True)
     email = db.Column(db.String(150), unique=True, nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), default='pisos')  # admin, recepcion, pisos
+    role = db.Column(db.String(20), default='piso1')  # admin, recepcion, piso1, piso2, piso3
+    piso = db.Column(db.String(20), nullable=True)  # '1', '2', '3' para usuarios de pisos específicos
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=now_argentina)
     last_login = db.Column(db.DateTime)
@@ -43,6 +44,7 @@ class User(UserMixin, db.Model):
             'username': self.username,
             'email': self.email,
             'role': self.role,
+            'piso': self.piso,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None

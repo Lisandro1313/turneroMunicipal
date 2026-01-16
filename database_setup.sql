@@ -64,29 +64,29 @@ CREATE INDEX IF NOT EXISTS idx_chat_message_timestamp ON chat_message(timestamp)
 -- Insertar usuarios por defecto
 -- ============================================
 
--- Password: admin
+-- Password: admin123
 INSERT INTO "user" (username, email, password_hash, role, piso, is_active) 
-VALUES ('admin', 'admin@municipio.gov.ar', 'scrypt:32768:8:1$iGVt5Hv32FBKaPHu$2bc35dac6a8a45def44348b5f2e3ac7f1b3d05bb372ef9ec31a1bc34a9a93baea9cd076b06a4a8b23f6c9f52cf3db7fe30b8d28a4f96c0dc7b6dbbd06f4acf79', 'admin', NULL, TRUE)
+VALUES ('admin', 'admin@municipio.gov.ar', 'scrypt:32768:8:1$Iq5jLvmzbTIcKPNa$dbb5eac8ffb451e35c5122fab54798b7dc3daad5c607f362d6e3af46ea888f4006e78416fe2224df56858cb66d2465b71d996b4817c2d8e954ede1c80f54bdec', 'admin', NULL, TRUE)
 ON CONFLICT (username) DO NOTHING;
 
--- Password: recepcion
+-- Password: recepcion123
 INSERT INTO "user" (username, email, password_hash, role, piso, is_active) 
-VALUES ('recepcion', 'recepcion@municipio.gov.ar', 'scrypt:32768:8:1$iGVt5Hv32FBKaPHu$2bc35dac6a8a45def44348b5f2e3ac7f1b3d05bb372ef9ec31a1bc34a9a93baea9cd076b06a4a8b23f6c9f52cf3db7fe30b8d28a4f96c0dc7b6dbbd06f4acf79', 'recepcion', NULL, TRUE)
+VALUES ('recepcion', 'recepcion@municipio.gov.ar', 'scrypt:32768:8:1$1YjClFumQ2cQrpEC$8e5c38e07235f098f3f09e60f8dde08a33dc20ad17e0cd13969e1f6a20adea9d8556def9df3fba459e6b0be2b12571bb823a6f15ff887e9b83af4a56ba204807', 'recepcion', NULL, TRUE)
 ON CONFLICT (username) DO NOTHING;
 
--- Password: piso1
+-- Password: piso1123
 INSERT INTO "user" (username, email, password_hash, role, piso, is_active) 
-VALUES ('piso1', 'piso1@municipio.gov.ar', 'scrypt:32768:8:1$iGVt5Hv32FBKaPHu$2bc35dac6a8a45def44348b5f2e3ac7f1b3d05bb372ef9ec31a1bc34a9a93baea9cd076b06a4a8b23f6c9f52cf3db7fe30b8d28a4f96c0dc7b6dbbd06f4acf79', 'piso1', '1', TRUE)
+VALUES ('piso1', 'piso1@municipio.gov.ar', 'scrypt:32768:8:1$NOvHYqbiO8KLxk3a$d7bd9bba2263a5613ea8853c625851e1e05a13af4d4655c5e78f5051a771618511673dcd3c1b98a46a03262ba637077d84c813118961c0bb1195154e38b452c2', 'piso1', '1', TRUE)
 ON CONFLICT (username) DO NOTHING;
 
--- Password: piso2
+-- Password: piso2123
 INSERT INTO "user" (username, email, password_hash, role, piso, is_active) 
-VALUES ('piso2', 'piso2@municipio.gov.ar', 'scrypt:32768:8:1$iGVt5Hv32FBKaPHu$2bc35dac6a8a45def44348b5f2e3ac7f1b3d05bb372ef9ec31a1bc34a9a93baea9cd076b06a4a8b23f6c9f52cf3db7fe30b8d28a4f96c0dc7b6dbbd06f4acf79', 'piso2', '2', TRUE)
+VALUES ('piso2', 'piso2@municipio.gov.ar', 'scrypt:32768:8:1$UucLvf3LXyXIFN3J$77e405df80fd0cb2008de6e9fda9ab58fcd99bc46fddc73c4bb7400aebe93f72ce6eb6c3ea41e284c30fe6c60ed71f6e9b2581c9db805bdaf26e326cb596e326', 'piso2', '2', TRUE)
 ON CONFLICT (username) DO NOTHING;
 
--- Password: piso3
+-- Password: piso3123
 INSERT INTO "user" (username, email, password_hash, role, piso, is_active) 
-VALUES ('piso3', 'piso3@municipio.gov.ar', 'scrypt:32768:8:1$iGVt5Hv32FBKaPHu$2bc35dac6a8a45def44348b5f2e3ac7f1b3d05bb372ef9ec31a1bc34a9a93baea9cd076b06a4a8b23f6c9f52cf3db7fe30b8d28a4f96c0dc7b6dbbd06f4acf79', 'piso3', '3', TRUE)
+VALUES ('piso3', 'piso3@municipio.gov.ar', 'scrypt:32768:8:1$SFk2b4DlWhWMZm0p$cab3b085cf01bca4502674999e21a4ef55105fe5eab0d9f355fde9f381d059ff83f9e32de356f77480f1125191d4c0685ea7c097df89e4011b8f5bd048e28f6c', 'piso3', '3', TRUE)
 ON CONFLICT (username) DO NOTHING;
 
 -- ============================================

@@ -11,6 +11,66 @@
         </div>
     </div>
 
+    <!-- NUEVO: Buscador por DNI/Nombre -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-search"></i> Buscar Historial de Visitante</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                                <input type="text" class="form-control" id="inputDNI" placeholder="Ingrese DNI (ej: 12345678)">
+                                <button class="btn btn-primary" onclick="buscarPorDNI()">
+                                    <i class="bi bi-search"></i> Buscar DNI
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="input-group mb-3">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="inputNombre" placeholder="Ingrese Nombre (mínimo 3 letras)">
+                                <button class="btn btn-success" onclick="buscarPorNombre()">
+                                    <i class="bi bi-search"></i> Buscar Nombre
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-secondary w-100" onclick="limpiarBusqueda()">
+                                <i class="bi bi-x-circle"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resultados de búsqueda -->
+                    <div id="resultadoBusqueda" style="display: none;">
+                        <hr>
+                        <div id="resumenVisitante" class="alert alert-info" style="display: none;"></div>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha/Hora</th>
+                                        <th>Nombre</th>
+                                        <th>DNI</th>
+                                        <th>Área</th>
+                                        <th>Piso</th>
+                                        <th>Motivo</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaBusqueda"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Resumen General -->
     <div class="row mb-4">
         <div class="col-md-3">
@@ -110,6 +170,36 @@
         </div>
     </div>
 
+    <!-- NUEVO: Motivos de Consulta -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-chat-left-text"></i> Motivos de Consulta más Frecuentes (Hoy)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Motivo</th>
+                                    <th>Cantidad</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaPorMotivo">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Últimos Turnos -->
     <div class="row">
         <div class="col-12">
@@ -148,6 +238,140 @@
 
 {% block extra_js %}
 <script>
+// Función para buscar por DNI
+function buscarPorDNI() {
+    const dni = document.getElementById('inputDNI').value.trim();
+    if (!dni) {
+        alert('Por favor ingrese un DNI');
+        return;
+    }
+    
+    fetch(`/turns/api/buscar-por-dni?dni=${encodeURIComponent(dni)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data.turnos && data.data.turnos.length > 0) {
+                mostrarResultados(data.data.turnos);
+                mostrarResumen(data.data.resumen);
+            } else {
+                document.getElementById('resultadoBusqueda').style.display = 'block';
+                document.getElementById('tablaBusqueda').innerHTML = `
+                    <tr><td colspan="7" class="text-center text-warning">
+                        <i class="bi bi-exclamation-triangle"></i> No se encontraron visitas para el DNI ${dni}
+                    </td></tr>
+                `;
+                document.getElementById('resumenVisitante').style.display = 'none';
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Error al buscar. Intente nuevamente.');
+        });
+}
+
+// Función para buscar por nombre
+function buscarPorNombre() {
+    const nombre = document.getElementById('inputNombre').value.trim();
+    if (!nombre || nombre.length < 3) {
+        alert('Por favor ingrese al menos 3 letras del nombre');
+        return;
+    }
+    
+    fetch(`/turns/api/buscar-por-nombre?nombre=${encodeURIComponent(nombre)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data.length > 0) {
+                mostrarResultados(data.data);
+                document.getElementById('resumenVisitante').style.display = 'none';
+            } else {
+                document.getElementById('resultadoBusqueda').style.display = 'block';
+                document.getElementById('tablaBusqueda').innerHTML = `
+                    <tr><td colspan="7" class="text-center text-warning">
+                        <i class="bi bi-exclamation-triangle"></i> No se encontraron visitas con el nombre "${nombre}"
+                    </td></tr>
+                `;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            alert('Error al buscar. Intente nuevamente.');
+        });
+}
+
+// Mostrar resultados en tabla
+function mostrarResultados(turnos) {
+    const estadoBadge = {
+        'ESPERA': '<span class="badge bg-warning text-dark">Esperando</span>',
+        'AUTORIZADO_SUBIR': '<span class="badge bg-info">Subiendo</span>',
+        'ATENDIDO': '<span class="badge bg-success">Atendido</span>',
+        'RECHAZADO': '<span class="badge bg-danger">Rechazado</span>'
+    };
+    
+    document.getElementById('resultadoBusqueda').style.display = 'block';
+    document.getElementById('tablaBusqueda').innerHTML = turnos.map(t => {
+        const fecha = new Date(t.hora_llegada);
+        const fechaStr = fecha.toLocaleDateString('es-AR', {day: '2-digit', month: '2-digit', year: 'numeric'});
+        const horaStr = fecha.toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'});
+        return `
+            <tr>
+                <td>${fechaStr}<br><small class="text-muted">${horaStr}</small></td>
+                <td><strong>${t.nombre}</strong></td>
+                <td>${t.dni || '-'}</td>
+                <td>${t.area_nombre}</td>
+                <td>Piso ${t.piso}</td>
+                <td>${t.motivo_texto || '-'}</td>
+                <td>${estadoBadge[t.estado]}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Mostrar resumen del visitante
+function mostrarResumen(resumen) {
+    if (!resumen) return;
+    
+    const primeraVisita = new Date(resumen.primera_visita).toLocaleDateString('es-AR');
+    const ultimaVisita = new Date(resumen.ultima_visita).toLocaleDateString('es-AR');
+    
+    document.getElementById('resumenVisitante').style.display = 'block';
+    document.getElementById('resumenVisitante').innerHTML = `
+        <h5><i class="bi bi-person-badge"></i> ${resumen.nombre} - DNI: ${resumen.dni}</h5>
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Total de visitas:</strong> ${resumen.total_visitas}
+            </div>
+            <div class="col-md-3">
+                <strong>Primera visita:</strong> ${primeraVisita}
+            </div>
+            <div class="col-md-3">
+                <strong>Última visita:</strong> ${ultimaVisita}
+            </div>
+            <div class="col-md-3">
+                <strong>Áreas visitadas:</strong> ${resumen.areas_visitadas.length}
+            </div>
+        </div>
+        <div class="mt-2">
+            <strong>Áreas:</strong> ${resumen.areas_visitadas.join(', ')}
+        </div>
+    `;
+}
+
+// Limpiar búsqueda
+function limpiarBusqueda() {
+    document.getElementById('inputDNI').value = '';
+    document.getElementById('inputNombre').value = '';
+    document.getElementById('resultadoBusqueda').style.display = 'none';
+    document.getElementById('resumenVisitante').style.display = 'none';
+}
+
+// Enter key handlers
+document.getElementById('inputDNI').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') buscarPorDNI();
+});
+
+document.getElementById('inputNombre').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') buscarPorNombre();
+});
+
 function cargarEstadisticas() {
     // Resumen general
     fetch('/turns/api/estadisticas/resumen')
@@ -188,6 +412,31 @@ function cargarEstadisticas() {
                         <td><span class="badge bg-warning text-dark">${area.en_espera}</span></td>
                     </tr>
                 `).join('');
+            } else {
+                document.getElementById('tablaPorArea').innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay datos para hoy</td></tr>';
+            }
+        });
+    
+    // Por motivo (NUEVO)
+    fetch('/turns/api/estadisticas/por-motivo')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data.length > 0) {
+                const tbody = document.getElementById('tablaPorMotivo');
+                const total = data.data.reduce((sum, m) => sum + m.total, 0);
+                tbody.innerHTML = data.data.slice(0, 15).map((motivo, i) => {
+                    const porcentaje = ((motivo.total / total) * 100).toFixed(1);
+                    return `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td><strong>${motivo.motivo}</strong></td>
+                            <td><span class="badge bg-primary">${motivo.total}</span></td>
+                            <td><span class="badge bg-info">${porcentaje}%</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                document.getElementById('tablaPorMotivo').innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay datos de motivos para hoy</td></tr>';
             }
         });
     

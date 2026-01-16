@@ -50,3 +50,8 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Mobile app
+mobile-app/node_modules/
+mobile-app/.expo/
+mobile-app/dist/

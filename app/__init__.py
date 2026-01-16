@@ -47,15 +47,16 @@ def create_app(config_name=None):
     login_manager.init_app(app)
     migrate.init_app(app, db)
     
-    # CSRF Protection
+    # CSRF Protection - Excluir rutas API
     csrf.init_app(app)
+    csrf.exempt('app.routes.api_login')
     
     # Rate limiting
     if app.config.get('RATELIMIT_ENABLED', True):
         limiter.init_app(app)
     
     # CORS para APIs
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": "*", "supports_credentials": True}})
     
     # Logging
     if not app.debug and not app.testing:
@@ -73,12 +74,15 @@ def create_app(config_name=None):
     # Registrar blueprints
     from app.routes import main
     from app.turns import turns_bp
+    from app.notifications import notifications_bp
     
     app.register_blueprint(main)
     app.register_blueprint(turns_bp)
+    app.register_blueprint(notifications_bp)
     
     # Excluir rutas API del CSRF
     csrf.exempt(turns_bp)
+    csrf.exempt(notifications_bp)
     
     # Context processors
     @app.context_processor
@@ -109,6 +113,7 @@ def create_app(config_name=None):
     # Crear tablas
     with app.app_context():
         from app.models import User, VisitorTurn, ChatMessage
+        from app.notifications import DeviceToken
         db.create_all()
         
         # Crear usuario admin por defecto si no existe

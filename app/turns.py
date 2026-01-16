@@ -22,11 +22,13 @@ def recepcion():
     # Solo admin y recepcion pueden acceder
     if current_user.role not in ['admin', 'recepcion']:
         flash('No tienes acceso a esta sección', 'error')
-        return redirect(url_for('turns.piso_llamado', numero=1))
+        # Redirigir al piso correspondiente si es usuario de piso
+        if current_user.role in ['piso1', 'piso2', 'piso3']:
+            piso_num = current_user.role.replace('piso', '')
+            return redirect(url_for('turns.piso_llamado', numero=int(piso_num)))
+        return redirect(url_for('main.index'))
     
-    from flask import current_app
-    areas = current_app.config.get('AREAS_MUNICIPALES_NORMALIZADAS', [])
-    return render_template('turns/recepcion.html', areas=areas)
+    return render_template('turns/recepcion.html')
 
 @turns_bp.route('/area/<area_key>')
 @login_required
@@ -37,30 +39,40 @@ def area_dashboard(area_key):
         flash('No tienes acceso a esta sección', 'error')
         if current_user.role == 'recepcion':
             return redirect(url_for('turns.recepcion'))
-        else:  # pisos
-            return redirect(url_for('turns.piso_llamado', numero=1))
+        elif current_user.role in ['piso1', 'piso2', 'piso3']:
+            piso_num = current_user.role.replace('piso', '')
+            return redirect(url_for('turns.piso_llamado', numero=int(piso_num)))
+        return redirect(url_for('main.index'))
     
-    from flask import current_app
-    areas = current_app.config.get('AREAS_MUNICIPALES_NORMALIZADAS', [])
+    from config import Config
+    areas = Config.AREAS_MUNICIPALES_NORMALIZADAS
     area = next((a for a in areas if a['key'] == area_key), None)
     
     if not area:
         flash('Área no encontrada', 'error')
         return redirect(url_for('turns.recepcion'))
     
-    return render_template('turns/area_dashboard.html', area=area, areas=areas)
+    return render_template('turns/area_dashboard.html', area=area)
 
 @turns_bp.route('/piso/<int:numero>')
 @login_required
 def piso_llamado(numero):
     """Vista de llamado para cada piso - ver turnos en ESPERA y llamarlos"""
-    # Solo admin y pisos pueden acceder
-    if current_user.role not in ['admin', 'pisos']:
+    # Admin puede ver cualquier piso
+    # Usuarios de piso solo pueden ver su propio piso
+    if current_user.role not in ['admin', 'piso1', 'piso2', 'piso3']:
         flash('No tienes acceso a esta sección', 'error')
         return redirect(url_for('turns.recepcion'))
     
-    from flask import current_app
-    areas = current_app.config.get('AREAS_MUNICIPALES_NORMALIZADAS', [])
+    # Si no es admin, verificar que solo acceda a su piso
+    if current_user.role != 'admin':
+        piso_num = int(current_user.role.replace('piso', ''))
+        if piso_num != numero:
+            flash(f'Solo puedes acceder al piso {piso_num}', 'error')
+            return redirect(url_for('turns.piso_llamado', numero=piso_num))
+    
+    from config import Config
+    areas = Config.AREAS_MUNICIPALES_NORMALIZADAS
     areas_piso = [a for a in areas if a.get('piso') == str(numero)]
     
     if not areas_piso:
@@ -191,6 +203,13 @@ def api_create_turn():
         
         print(f"DEBUG - Turno creado exitosamente ID={turno.id}")  # DEBUG
         
+        # 🔔 Enviar notificación push a usuarios del piso
+        try:
+            from app.notifications import notify_new_turn
+            notify_new_turn(turno)
+        except Exception as e:
+            print(f"Error enviando notificación: {e}")
+        
         return jsonify({
             'success': True,
             'message': 'Turno registrado correctamente',
@@ -223,6 +242,13 @@ def api_autorizar_turno(turno_id):
     if atendido_por:
         turno.atendido_por = atendido_por
         db.session.commit()
+    
+    # 🔔 Enviar notificación push
+    try:
+        from app.notifications import notify_turn_authorized
+        notify_turn_authorized(turno)
+    except Exception as e:
+        print(f"Error enviando notificación: {e}")
     
     return jsonify({
         'success': True,
@@ -351,6 +377,7 @@ def api_estadisticas_por_piso():
 def api_estadisticas_por_area():
     """Estadísticas de turnos por área"""
     from datetime import date
+    from sqlalchemy import case
     
     hoy = date.today()
     
@@ -358,8 +385,8 @@ def api_estadisticas_por_area():
         VisitorTurn.area_nombre,
         VisitorTurn.piso,
         func.count(VisitorTurn.id).label('total'),
-        func.sum(func.case((VisitorTurn.estado == 'ATENDIDO', 1), else_=0)).label('atendidos'),
-        func.sum(func.case((VisitorTurn.estado == 'ESPERA', 1), else_=0)).label('en_espera')
+        func.sum(case((VisitorTurn.estado == 'ATENDIDO', 1), else_=0)).label('atendidos'),
+        func.sum(case((VisitorTurn.estado == 'ESPERA', 1), else_=0)).label('en_espera')
     ).filter(
         func.date(VisitorTurn.hora_llegada) == hoy
     ).group_by(
@@ -377,6 +404,123 @@ def api_estadisticas_por_area():
     return jsonify({
         'success': True,
         'data': resultado
+    })
+
+@turns_bp.route('/api/estadisticas/por-motivo', methods=['GET'])
+@login_required
+def api_estadisticas_por_motivo():
+    """Estadísticas de turnos por motivo de consulta"""
+    from datetime import date, datetime, timedelta
+    
+    # Parámetros opcionales de fecha
+    fecha_desde = request.args.get('fecha_desde')
+    fecha_hasta = request.args.get('fecha_hasta')
+    
+    query = db.session.query(
+        VisitorTurn.motivo_texto,
+        func.count(VisitorTurn.id).label('total')
+    ).filter(
+        VisitorTurn.motivo_texto.isnot(None),
+        VisitorTurn.motivo_texto != ''
+    )
+    
+    # Filtrar por fechas si se proporcionan
+    if fecha_desde:
+        try:
+            fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            query = query.filter(func.date(VisitorTurn.hora_llegada) >= fecha_desde_dt)
+        except ValueError:
+            pass
+    
+    if fecha_hasta:
+        try:
+            fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            query = query.filter(func.date(VisitorTurn.hora_llegada) <= fecha_hasta_dt)
+        except ValueError:
+            pass
+    else:
+        # Por defecto, solo hoy
+        hoy = date.today()
+        query = query.filter(func.date(VisitorTurn.hora_llegada) == hoy)
+    
+    por_motivo = query.group_by(VisitorTurn.motivo_texto).order_by(func.count(VisitorTurn.id).desc()).limit(20).all()
+    
+    resultado = [{
+        'motivo': motivo.motivo_texto,
+        'total': motivo.total
+    } for motivo in por_motivo]
+    
+    return jsonify({
+        'success': True,
+        'data': resultado
+    })
+
+@turns_bp.route('/api/buscar-por-dni', methods=['GET'])
+@login_required
+def api_buscar_por_dni():
+    """Buscar todas las visitas de una persona por DNI"""
+    dni = request.args.get('dni', '').strip()
+    
+    if not dni:
+        return jsonify({
+            'success': False,
+            'message': 'DNI es requerido'
+        }), 400
+    
+    # Buscar todos los turnos de esa persona
+    turnos = VisitorTurn.query.filter(
+        VisitorTurn.dni.like(f'%{dni}%')
+    ).order_by(VisitorTurn.hora_llegada.desc()).all()
+    
+    if not turnos:
+        return jsonify({
+            'success': True,
+            'data': [],
+            'message': f'No se encontraron visitas para el DNI {dni}'
+        })
+    
+    # Estadísticas de esta persona
+    total_visitas = len(turnos)
+    areas_visitadas = list(set([t.area_nombre for t in turnos]))
+    motivos = [t.motivo_texto for t in turnos if t.motivo_texto]
+    
+    return jsonify({
+        'success': True,
+        'data': {
+            'turnos': [t.to_dict() for t in turnos],
+            'resumen': {
+                'nombre': turnos[0].nombre if turnos else '',
+                'dni': dni,
+                'total_visitas': total_visitas,
+                'areas_visitadas': areas_visitadas,
+                'motivos_frecuentes': list(set(motivos)),
+                'primera_visita': turnos[-1].hora_llegada.isoformat() if turnos else None,
+                'ultima_visita': turnos[0].hora_llegada.isoformat() if turnos else None
+            }
+        }
+    })
+
+@turns_bp.route('/api/buscar-por-nombre', methods=['GET'])
+@login_required
+def api_buscar_por_nombre():
+    """Buscar visitas por nombre"""
+    nombre = request.args.get('nombre', '').strip()
+    
+    if not nombre or len(nombre) < 3:
+        return jsonify({
+            'success': False,
+            'message': 'El nombre debe tener al menos 3 caracteres'
+        }), 400
+    
+    # Buscar turnos que coincidan con el nombre
+    turnos = VisitorTurn.query.filter(
+        VisitorTurn.nombre.ilike(f'%{nombre}%')
+    ).order_by(VisitorTurn.hora_llegada.desc()).limit(50).all()
+    
+    return jsonify({
+        'success': True,
+        'data': [t.to_dict() for t in turnos],
+        'count': len(turnos)
     })
 
 # ============================================
